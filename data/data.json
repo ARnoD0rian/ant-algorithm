@@ -1,0 +1,33 @@
+{
+    "num_vertex": 6,
+
+    "vertexes": [
+        {"x":486, "y":72},
+        {"x":242, "y":88},
+        {"x":215, "y":207},
+        {"x":318, "y":283},
+        {"x":499, "y": 208},
+        {"x":356, "y": 172}
+    ],
+
+    "edges": [
+        {"from":1, "to":2, "weight": 3},
+        {"from":1, "to":5, "weight": 1},
+        {"from":2, "to":1, "weight": 3},
+        {"from":2, "to":6, "weight": 3},
+        {"from":2, "to":3, "weight": 8},
+        {"from":3, "to":2, "weight": 3},
+        {"from":3, "to":6, "weight": 3},
+        {"from":3, "to":4, "weight": 1},
+        {"from":4, "to":3, "weight": 8},
+        {"from":4, "to":5, "weight": 1},
+        {"from":5, "to":1, "weight": 3},
+        {"from":5, "to":4, "weight": 3},
+        {"from":6, "to":1, "weight": 3},
+        {"from":6, "to":2, "weight": 3},
+        {"from":6, "to":3, "weight": 3},
+        {"from":6, "to":4, "weight": 5},
+        {"from":6, "to":5, "weight": 4}
+
+    ]
+}
