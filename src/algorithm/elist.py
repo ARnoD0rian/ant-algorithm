@@ -1,35 +1,10 @@
-from algorithm.karcas import Algorithm as AbcAlgorithm
+from algorithm.abstract import Algorithm as AbcAlgorithm
+from algorithm.Ant import Ant
 import networkx as nx
+import queue as q
 import random
-import multiprocessing as mp
+import math
 import sys
-
-N_POCESS = 4
-N_DROB = 16
-
-class Ant:
-    def __init__(self, start_vertex: int) -> None:
-        self._current_vertex = start_vertex
-        self._way = list()
-        self._visited = set()
-        self._way.append(start_vertex)
-        self._visited.add(start_vertex)
-        
-    @property
-    def current_vertex(self):
-        return self._current_vertex
-    
-    @property
-    def way(self):
-        return self._way
-    
-    def is_visited(self, vertex):
-        return vertex in self._visited
-    
-    def transition_new_vertex(self, vertex):
-        self._way.append(vertex)
-        self._visited.add(vertex)
-        self._current_vertex = vertex
         
 
 class Algorithm(AbcAlgorithm):
@@ -41,7 +16,7 @@ class Algorithm(AbcAlgorithm):
         
         self.iteration = 50
         self.const_for_pheromon = 1
-        self.num_ant = N_POCESS*N_DROB
+        self.num_ant = 50
         
         self.importance_pheromon = 1
         self.importance_long = 3
@@ -58,47 +33,22 @@ class Algorithm(AbcAlgorithm):
             self._sum_local_pheromon.add_edge(edge["from"], edge["to"], weight=0)
             
     def search_hamilton_cycle(self) -> list[dict]:
-        input_process = mp.Queue()
-        results = mp.Queue()
-        updates = [
-            mp.Queue()
-            for _ in range(N_POCESS)
-        ]
-
-        processes = [
-            mp.Process(target=self.process_search_way, args=(input_process, results, updates[i]))
-            for i in range(N_POCESS)
-            ]
-        
-        for process in processes:
-            process.start()
-        
         for _ in range(self.iteration):
-            ants = [Ant(random.randint(1, len(self._graph.nodes)))
-                    for _ in range(self.num_ant)
-                    ]
-            
-            for i in range(N_DROB, self.num_ant + 1, N_DROB):
-                input_process.put(ants[i-16:i])
-            
             ants = []
-            quality_results = 0
-            while quality_results < 4:
-                if not results.empty():
-                    ants += results.get()
-                    quality_results += 1
-                    
+            for _ in range(self.num_ant):
+                ants.append(Ant(random.randint(1, len(self._graph.nodes))))
+            ants = [self.search_way_for_ant(ant) for ant in ants]
             k = 0
             while k < len(ants):
                 if ants[k].current_vertex == 0: ants.pop(k)
                 else: k += 1
+            
             self.update_sum_local_pheromon(ants)
             self.update_global_pheromon()
-
-            for i in range(N_POCESS):
-                updates[i].put(self._global_pheromon)
             
         min_way = min(ants, key=lambda x: self.way_long(x.way)).way
+        
+        self.add_pheromon(min_way)
         
         min_way = [{"from": min_way[i],
                     "to": min_way[(i + 1) % len(min_way)],
@@ -106,44 +56,26 @@ class Algorithm(AbcAlgorithm):
                    for i in range(len(min_way))
                    ]
             
-        for process in processes:
-            process.terminate()
-
-        if len(ants) > 0:  
-            min_way = min(ants, key=lambda x: self.way_long(x.way)).way
-        
-            min_way = [{"from": min_way[i],
-                        "to": min_way[(i + 1) % len(min_way)],
-                        "weight": self._graph[min_way[i]][min_way[(i + 1) % len(min_way)]]["weight"]}
-                       for i in range(len(min_way))
-                       ]
-            
-            return min_way
-        else:
-            return []
-    
-    def process_search_way(self, input: mp.Queue, output: mp.Queue, update_global: mp.Queue) -> None:
-        while True:
-            if not input.empty():
-                output.put([self.search_way_for_ant(ant) for ant in input.get()].copy())
-
-            if not update_global.empty():
-                self._global_pheromon = update_global.get()
+        return min_way
     
     def update_global_pheromon(self) -> None:
         for edge in self._graph.edges:
             self._global_pheromon[edge[0]][edge[1]]["weight"] = (1 - self.evaporation_rate) * \
                 self._global_pheromon[edge[0]][edge[1]]["weight"] + self._sum_local_pheromon[edge[0]][edge[1]]["weight"]
     
-    def update_sum_local_pheromon(self, ants: list[Ant]) -> None:
+    def update_sum_local_pheromon(self, ants: list) -> None:
         for edge in self._graph.edges:
             self._sum_local_pheromon[edge[0]][edge[1]]["weight"] = 0
         
         for ant in ants:
             for i in range(1, len(ant.way) + 1):
-                self._sum_local_pheromon
                 self._sum_local_pheromon[ant.way[i-1]][ant.way[i % len(ant.way)]]["weight"] +=  \
                     self.const_for_pheromon / self._graph[ant.way[i-1]][ant.way[i % len(ant.way)]]["weight"]
+                    
+    def add_pheromon(self, way: list) -> None:
+        for i in range(len(way)):
+            self._sum_local_pheromon[way[i]][way[(i + 1) % len(way)]]["weight"] += \
+                self.const_for_pheromon / self._graph[way[i-1]][way[i % len(way)]]["weight"]
         
                 
     
